@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garage</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="index-page">
+  <div class="index-container">
+    <h1>Garage</h1>
+
+    <!-- TODO: sensor – visa portstatus här när reed switch är kopplad -->
+    <!-- <p id="door-status" class="status">Status: okänd</p> -->
+
+    <button id="trigger-btn" class="trigger-btn" onclick="triggerDoor()">
+      ÖPPNA / STÄNG
+    </button>
+
+    <p id="feedback" class="feedback"></p>
+
+    {% if last_trigger %}
+      <p class="last-trigger">Senast utlöst: {{ last_trigger }}</p>
+    {% endif %}
+
+    <form method="post" action="/logout" class="logout-form">
+      <button type="submit" class="logout-btn">Logga ut</button>
+    </form>
+  </div>
+
+  <script>
+    async function triggerDoor() {
+      const btn = document.getElementById('trigger-btn');
+      const feedback = document.getElementById('feedback');
+
+      btn.disabled = true;
+      btn.textContent = 'Skickar…';
+      feedback.textContent = '';
+      feedback.className = 'feedback';
+
+      try {
+        const resp = await fetch('/trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+          feedback.textContent = '✓ ' + data.message;
+          feedback.className = 'feedback success';
+          if (data.time) {
+            const el = document.querySelector('.last-trigger');
+            if (el) el.textContent = 'Senast utlöst: ' + data.time;
+            else {
+              const p = document.createElement('p');
+              p.className = 'last-trigger';
+              p.textContent = 'Senast utlöst: ' + data.time;
+              document.querySelector('.index-container').insertBefore(p, document.querySelector('.logout-form'));
+            }
+          }
+        } else {
+          feedback.textContent = '✗ ' + data.message;
+          feedback.className = 'feedback error';
+        }
+      } catch (e) {
+        feedback.textContent = '✗ Nätverksfel';
+        feedback.className = 'feedback error';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'ÖPPNA / STÄNG';
+      }
+    }
+  </script>
+</body>
+</html>

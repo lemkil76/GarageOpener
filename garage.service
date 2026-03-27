@@ -1,0 +1,13 @@
+[Unit]
+Description=Garage Door Controller
+After=network.target
+
+[Service]
+User=garage
+WorkingDirectory=/home/garage/garage-controller
+ExecStart=/home/garage/garage-controller/venv/bin/python app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
