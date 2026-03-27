@@ -4,6 +4,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import config
 import relay
+import db
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
@@ -17,6 +18,7 @@ limiter = Limiter(
 )
 
 relay.setup_pin(config.GPIO_RELAY_PIN)
+db.init_db()
 
 last_trigger_time = None
 
@@ -48,14 +50,17 @@ def login():
         if pin == config.PIN_CODE:
             session.permanent = True
             session["authenticated"] = True
+            db.log_event("login_success", ip=request.remote_addr)
             return redirect(url_for("index"))
         else:
+            db.log_event("login_failed", ip=request.remote_addr, success=False, message="Felaktig PIN")
             error = "Felaktig PIN-kod"
     return render_template("login.html", error=error)
 
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    db.log_event("logout", ip=request.remote_addr)
     session.clear()
     return redirect(url_for("login"))
 
@@ -67,8 +72,10 @@ def trigger():
     try:
         relay.pulse_relay(config.GPIO_RELAY_PIN, config.RELAY_PULSE_MS)
         last_trigger_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        db.log_event("trigger", ip=request.remote_addr)
         return jsonify({"success": True, "message": "Porten utlöst", "time": last_trigger_time})
     except Exception as e:
+        db.log_event("trigger", ip=request.remote_addr, success=False, message=str(e))
         return jsonify({"success": False, "message": str(e)}), 500
 
 
